@@ -1,0 +1,31 @@
+[
+  {
+    "namespace": "secretstorage",
+    "description": "",
+    "permissions": ["experiments.secretstorage"],
+
+    "functions": [
+      {
+        "name": "store",
+        "type": "function",
+        "description": "",
+        "async": true,
+        "parameters": [
+          {
+            "name": "password",
+            "type": "string"
+          }
+        ]
+      },
+
+      {
+        "name": "lookup",
+        "type": "function",
+        "description": "",
+        "async": true,
+        "parameters": [
+        ]
+      }
+    ]
+  }
+]

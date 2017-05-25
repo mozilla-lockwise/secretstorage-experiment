@@ -4,6 +4,11 @@ const {
 
 Cu.import("resource://gre/modules/ctypes.jsm");
 
+const GAsyncReadyCallback = ctypes.FunctionType(
+  ctypes.default_abi, ctypes.void_t,
+  [ctypes.voidptr_t, ctypes.voidptr_t, ctypes.voidptr_t]
+).ptr;
+
 const SecretSchemaAttribute = new ctypes.StructType("SecretSchemaAttribute", [
   {"name": ctypes.char.ptr},
   {"flags": ctypes.int},
@@ -25,15 +30,30 @@ let schema = new SecretSchema(schema_name, 0, attrs);
 
 let libsecret = ctypes.open("libsecret-1.so.0");
 
-let secret_password_store_sync = libsecret.declare(
-  "secret_password_store_sync", ctypes.default_abi, ctypes.bool,
+const secret_password_store = libsecret.declare(
+  "secret_password_store", ctypes.default_abi, ctypes.void_t,
   SecretSchema.ptr, ctypes.char.ptr, ctypes.char.ptr, ctypes.char.ptr,
-  ctypes.voidptr_t, ctypes.voidptr_t, "..."
+  ctypes.voidptr_t, GAsyncReadyCallback, ctypes.voidptr_t, "..."
 );
 
-let secret_password_lookup_sync = libsecret.declare(
-  "secret_password_lookup_sync", ctypes.default_abi, ctypes.char.ptr,
-  SecretSchema.ptr, ctypes.voidptr_t, ctypes.voidptr_t, "..."
+const secret_password_store_finish = libsecret.declare(
+  "secret_password_store_finish", ctypes.default_abi, ctypes.bool,
+  ctypes.voidptr_t, ctypes.voidptr_t
+);
+
+const secret_password_lookup = libsecret.declare(
+  "secret_password_lookup", ctypes.default_abi, ctypes.void_t,
+  SecretSchema.ptr, ctypes.voidptr_t, GAsyncReadyCallback, ctypes.voidptr_t,
+  "..."
+);
+
+const secret_password_lookup_finish = libsecret.declare(
+  "secret_password_lookup_finish", ctypes.default_abi, ctypes.char.ptr,
+  ctypes.voidptr_t, ctypes.voidptr_t
+);
+
+const secret_password_free = libsecret.declare(
+  "secret_password_free", ctypes.default_abi, ctypes.voidptr_t, ctypes.char.ptr
 );
 
 class API extends ExtensionAPI {
@@ -41,20 +61,40 @@ class API extends ExtensionAPI {
     return {
       secretstorage: {
         async store(password) {
-          return secret_password_store_sync(
-            schema.address(), "session", "my label", password, null, null,
-            ctypes.char.array()("string"), ctypes.char.array()("hello"),
-            ctypes.voidptr_t()
-          );
+          return new Promise((resolve, reject) => {
+            let callback = (source, result, unused) => {
+              resolve(secret_password_store_finish(
+                result, ctypes.voidptr_t()
+              ));
+            };
+
+
+            secret_password_store(
+              schema.address(), "session", "my label", password, null,
+              GAsyncReadyCallback(callback), null,
+              ctypes.char.array()("string"), ctypes.char.array()("hello"),
+              ctypes.voidptr_t()
+            );
+          });
         },
 
         async lookup() {
-          let value = secret_password_lookup_sync(
-            schema.address(), null, null,
-            ctypes.char.array()("string"), ctypes.char.array()("hello"),
-            ctypes.voidptr_t()
-          );
-          return value.readString();
+          return new Promise((resolve, reject) => {
+            let callback = (source, result, unused) => {
+              let password = secret_password_lookup_finish(
+                result, ctypes.voidptr_t()
+              );
+              let passwordValue = password.readString();
+              secret_password_free(password);
+              resolve(passwordValue);
+            };
+
+            secret_password_lookup(
+              schema.address(), null, GAsyncReadyCallback(callback), null,
+              ctypes.char.array()("string"), ctypes.char.array()("hello"),
+              ctypes.voidptr_t()
+            );
+          });
         },
       }
     };

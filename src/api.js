@@ -4,7 +4,6 @@ const {
 
 Cu.import("resource://gre/modules/ctypes.jsm");
 
-let libsecret = ctypes.open("/usr/lib/x86_64-linux-gnu/libsecret-1.so.0");
 const SecretSchemaAttribute = new ctypes.StructType("SecretSchemaAttribute", [
   {"name": ctypes.char.ptr},
   {"flags": ctypes.int},
@@ -23,6 +22,8 @@ attrs.fill(new SecretSchemaAttribute, 1);
 
 let schema_name = ctypes.char.array()("my_schema");
 let schema = new SecretSchema(schema_name, 0, attrs);
+
+let libsecret = ctypes.open("libsecret-1.so.0");
 
 let secret_password_store_sync = libsecret.declare(
   "secret_password_store_sync", ctypes.default_abi, ctypes.bool,

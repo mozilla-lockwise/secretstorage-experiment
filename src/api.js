@@ -20,9 +20,10 @@ const SecretSchema = new ctypes.StructType("SecretSchema", [
   {"attributes": new ctypes.ArrayType(SecretSchemaAttribute, 32)},
 ]);
 
-let attr_name = ctypes.char.array()("string");
+// Create our schema.
+let schema_key_name = ctypes.char.array()("key");
 let attrs = new Array(32);
-attrs[0] = new SecretSchemaAttribute(attr_name, 0);
+attrs[0] = new SecretSchemaAttribute(schema_key_name, 0);
 attrs.fill(new SecretSchemaAttribute, 1);
 
 let schema_name = ctypes.char.array()("my_schema");
@@ -60,7 +61,7 @@ class API extends ExtensionAPI {
   getAPI(context) {
     return {
       secretstorage: {
-        async store(password) {
+        async store(key, password) {
           return new Promise((resolve, reject) => {
             let callback = (source, result, unused) => {
               resolve(secret_password_store_finish(
@@ -68,17 +69,16 @@ class API extends ExtensionAPI {
               ));
             };
 
-
             secret_password_store(
               schema.address(), "session", "my label", password, null,
               GAsyncReadyCallback(callback), null,
-              ctypes.char.array()("string"), ctypes.char.array()("hello"),
+              schema_key_name, ctypes.char.array()(key),
               ctypes.voidptr_t()
             );
           });
         },
 
-        async lookup() {
+        async lookup(key) {
           return new Promise((resolve, reject) => {
             let callback = (source, result, unused) => {
               let password = secret_password_lookup_finish(
@@ -91,7 +91,7 @@ class API extends ExtensionAPI {
 
             secret_password_lookup(
               schema.address(), null, GAsyncReadyCallback(callback), null,
-              ctypes.char.array()("string"), ctypes.char.array()("hello"),
+              schema_key_name, ctypes.char.array()(key),
               ctypes.voidptr_t()
             );
           });

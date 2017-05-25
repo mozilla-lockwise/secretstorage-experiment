@@ -12,6 +12,10 @@
         "async": true,
         "parameters": [
           {
+            "name": "key",
+            "type": "string"
+          },
+          {
             "name": "password",
             "type": "string"
           }
@@ -24,6 +28,10 @@
         "description": "",
         "async": true,
         "parameters": [
+          {
+            "name": "key",
+            "type": "string"
+          }
         ]
       }
     ]
